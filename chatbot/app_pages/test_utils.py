@@ -11,6 +11,8 @@ from google.cloud import firestore
 # Authenticate to Firestore with the JSON account key.
 db = firestore.Client.from_service_account_json("../firestore_key.json")
 
+st.session_state.page = 'test-utils'
+
 tab_vacature, tab_weaviate, tab_extra_info, tab_werkgevers, tab_firestore = st.tabs(
     ["Vacatures", "Weaviate", "Extra informatie", 'Werkgevers', 'Firestore']
 )

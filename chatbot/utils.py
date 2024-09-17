@@ -1,7 +1,7 @@
-import json
+import datetime
 import random
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -187,6 +187,7 @@ def read_cv():
         cv = f.read()
     return cv
 
+
 @st.cache_data
 def werkgevers_uit_cv():
     with weaviate.connect_to_local() as client:
@@ -195,12 +196,13 @@ def werkgevers_uit_cv():
             [
                 x.grouped_by.value
                 for x in collection.aggregate.over_all(
-                    total_count=True,
-                    group_by=GroupByAggregate(prop="bedrijf")
-                ).groups
+                total_count=True,
+                group_by=GroupByAggregate(prop="bedrijf")
+            ).groups
             ]
         )
     return werkgevers
+
 
 def werkgever_uit_prompt(prompt):
     client = OpenAI()
@@ -246,10 +248,31 @@ def extra_informatie(prompt):
 
 
 def save_conversation():
-    chat_data = {'chat_id': str(st.session_state.chat_id),
-     'user_info': st.session_state.userinfo,
-     'conversation': st.session_state.messages}
+    chat_data = {'chat_id': st.session_state.chat_id,
+                 'user_info': st.session_state.userinfo,
+                 'conversation': st.session_state.messages,
+                 'session_id': st.session_state.session_id,
+                 'chat_type': st.session_state.get('chat_type')}
 
     doc_ref = firestore_db.collection("chats").document(chat_data['chat_id'])
     doc_ref.set(chat_data)
 
+
+def save_session():
+    st.session_state.session_activity.append(
+        {
+            'page': st.session_state.page,
+            'action': 'load',
+            'akkoord': st.session_state.get("akkoord"),
+            'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+        }
+    )
+    session_data = {
+        'user_info': st.session_state.get('userinfo'),
+        'session_id': st.session_state.session_id,
+        'session_activity': st.session_state.session_activity,
+        'session_start': st.session_state.session_start
+    }
+
+    doc_ref = firestore_db.collection("sessions").document(session_data['session_id'])
+    doc_ref.set(session_data)

@@ -1,9 +1,13 @@
+from os import system
+
 import streamlit as st
 from openai import OpenAI
 
 from utils import Prompts
 
 st.header("Hoe werkt het")
+
+st.session_state.page = 'hoe-werkt-het'
 
 with st.expander("Herschijf de uitleg"):
     ikben = st.selectbox(

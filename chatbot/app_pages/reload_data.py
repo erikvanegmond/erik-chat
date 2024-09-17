@@ -7,6 +7,7 @@ import streamlit as st
 from openai import OpenAI
 from stqdm import stqdm
 
+st.session_state.page = 'reload-data'
 
 def word_splitter(source_text: str) -> List[str]:
     import re
@@ -174,6 +175,4 @@ st.header("Reload data")
 root_path = st.text_input('path/to/data')
 
 if root_path.strip():
-    # root_path = r'C:\Users\erikv\Dropbox\Documenten\Obsidian\Werk\Carriere'
-    # root_path = r'/root/text_data'
     main(root_path=root_path)

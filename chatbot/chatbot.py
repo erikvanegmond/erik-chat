@@ -1,14 +1,15 @@
+from uuid import uuid4
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 import os
 import requests
 from dotenv import load_dotenv
 from components import toestemming, feedback, new_conversation, chat_bot
-import gettext
+from utils import save_session
+import datetime
 
 from google.cloud import firestore
 
-_ = gettext.gettext
 load_dotenv()
 
 # Set constants
@@ -23,10 +24,17 @@ SCOPE = os.environ.get('SCOPE')
 APP_ENV = os.environ.get('APP_ENV')
 ADMIN_MAIL = os.environ.get('ADMIN_MAIL')
 
-st.set_page_config(page_title=_('Gesprek met Erik'), page_icon='💬', layout="centered", initial_sidebar_state="auto",
+st.set_page_config(page_title='Gesprek met Erik', page_icon='💬', layout="centered", initial_sidebar_state="auto",
                    menu_items=None)
 
 db = firestore.Client.from_service_account_json("../firestore_key.json")
+
+st.session_state['save_session'] = True
+
+if 'session_id' not in st.session_state:
+    st.session_state['session_id'] = str(uuid4())
+    st.session_state['session_activity'] = []
+    st.session_state['session_start'] = datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
 
 if 'show_conversation_starters' not in st.session_state:
     st.session_state['show_conversation_starters'] = True
@@ -73,6 +81,7 @@ if APP_ENV == 'dev':
 
 def main_page():
     st.title("💬 Gesprek met Erik")
+    st.session_state.page = 'main'
 
     if "akkoord" not in st.session_state:
         toestemming()
@@ -92,6 +101,15 @@ def main_page():
             res = requests.get('https://api.linkedin.com/v2/userinfo',
                                headers={'Authorization': f'Bearer {st.session_state['token']['access_token']}'})
             st.session_state.userinfo = res.json()
+
+            st.session_state.session_activity.append(
+                {
+                    'page': st.session_state.page,
+                    'action': 'logged in',
+                    'akkoord': st.session_state.get("akkoord"),
+                    'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                }
+            )
             new_conversation()
             st.rerun()
     else:
@@ -123,3 +141,5 @@ if admin:
 
 pg = st.navigation(page_list)
 pg.run()
+if st.session_state['save_session']:
+    save_session()

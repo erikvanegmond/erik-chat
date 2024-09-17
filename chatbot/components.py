@@ -16,7 +16,7 @@ firestore_db = firestore.Client.from_service_account_json("../firestore_key.json
 def toestemming():
     st.write('''
              Dit is een chatbot gebaseerd op een groot taalmodel (LLM) die zich voordoet als Erik. Hiervoor 
-             wordt een openAI model gebruikt en worden jou berichten naar openAI gestuurd.
+             wordt een OpenAI model gebruikt en worden jou berichten naar OpenAI gestuurd.
              Hoewel de chatbot zijn best doet om nauwkeurige en nuttige informatie te bieden,
              kan hij fouten maken in zijn antwoorden, of zelfs lariekoek verkondigen. Het is raadzaam om de antwoorden
              die je krijgt altijd te verifiëren met mijn cv, of natuurlijk met de echte Erik.  
@@ -32,6 +32,14 @@ def toestemming():
     if st.checkbox("Akkoord", value=('akkoord' in st.session_state) and st.session_state.akkoord):
         if st.button('👍 Kom gezellig binnen'):
             st.session_state.akkoord = True
+            st.session_state.session_activity.append(
+                {
+                    'page': st.session_state.page,
+                    'action': 'permission',
+                    'akkoord': st.session_state.akkoord,
+                    'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                }
+            )
             st.rerun()
     else:
         if st.button('👋 Doei!'):
@@ -40,6 +48,15 @@ def toestemming():
             del st.session_state.messages
             del st.session_state.token
             del st.session_state.chat_id
+
+            st.session_state.session_activity.append(
+                {
+                    'page': st.session_state.page,
+                    'action': 'retract permission',
+                    'akkoord': st.session_state.akkoord,
+                    'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                }
+            )
             st.rerun()
 
 
@@ -57,10 +74,19 @@ def feedback():
             feedback_data = {
                     "category": category,
                     "text": text,
-                    "context": str(st.session_state.chat_id)
+                    "context": st.session_state.chat_id
                 }
             doc_ref = firestore_db.collection("feedback").document(str(uuid.uuid4()))
             doc_ref.set(feedback_data)
+
+            st.session_state.session_activity.append(
+                {
+                    'page': st.session_state.page,
+                    'action': 'submit feedback',
+                    'akkoord': st.session_state.akkoord,
+                    'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                }
+            )
             st.rerun()
 
 
@@ -77,7 +103,16 @@ def vacature():
             )
         )
         save_conversation()
+        st.session_state.session_activity.append(
+            {
+                'page': st.session_state.page,
+                'action': 'submit vacature',
+                'akkoord': st.session_state.akkoord,
+                'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+            }
+        )
         st.session_state['show_conversation_starters'] = False
+        st.session_state['chat_type'] = 'vacature'
         st.rerun()
 
 
@@ -86,7 +121,7 @@ def new_conversation(start_prompt=None):
     open_ai_client = OpenAI()
     if start_prompt is None:
         start_prompt = Prompts.system_prompt_start
-    st.session_state.chat_id = uuid.uuid4()
+    st.session_state.chat_id = str(uuid.uuid4())
     st.session_state["messages"] = [
         {"role": "system",
          "content": start_prompt.format(name=st.session_state.userinfo['given_name'], cv=cv)
@@ -100,6 +135,15 @@ def new_conversation(start_prompt=None):
     st.session_state.messages.append({"role": "assistant", "content": msg, 'avatar': AVATAR_IMAGE,
                                       'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')})
     st.session_state['show_conversation_starters'] = True
+    st.session_state.session_activity.append(
+        {
+            'page': st.session_state.page,
+            'action': 'new conversation',
+            'chat_id': st.session_state.chat_id,
+            'akkoord': st.session_state.akkoord,
+            'datetime': datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+        }
+    )
 
 
 def chat_bot(debug=False):
@@ -110,7 +154,10 @@ def chat_bot(debug=False):
         if msg['role'] != 'system' or debug:
             st.chat_message(msg["role"], avatar=msg.get("avatar", "🤖")).write(msg["content"])
     if prompt := st.chat_input('Type hier je antwoord'):
+        if st.session_state['show_conversation_starters']:
+            st.session_state['chat_type'] = 'standaard'
         st.session_state['show_conversation_starters'] = False
+        st.session_state['save_session']=False
         st.session_state.messages.append(
             {"role": "user",
              "content": prompt,
@@ -152,6 +199,7 @@ def conversation_starters():
         col_vacature, col_ikben = st.columns(2)
         with col_vacature:
             if st.button("Ik heb een vacature", use_container_width=True):
+                st.session_state['save_session'] = False
                 vacature()
         with col_ikben:
             ikben = st.selectbox(
@@ -163,10 +211,14 @@ def conversation_starters():
             )
             if ikben == "een niet-technisch":
                 new_conversation(start_prompt=Prompts.system_prompt_start_niet_technisch)
+                st.session_state['chat_type'] = 'niet-technisch'
             elif ikben == "je oma":
                 new_conversation(start_prompt=Prompts.system_prompt_start_oma)
+                st.session_state['chat_type'] = 'oma'
             elif ikben == 'een kind van 5':
                 new_conversation(start_prompt=Prompts.system_prompt_start_kind)
+                st.session_state['chat_type'] = 'kind van 5'
             if ikben:
                 st.session_state['show_conversation_starters'] = False
+                st.session_state['save_session'] = False
                 st.rerun()
