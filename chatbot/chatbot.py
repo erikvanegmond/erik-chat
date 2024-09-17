@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from components import toestemming, feedback, new_conversation, chat_bot
 import gettext
 
+from google.cloud import firestore
+
 _ = gettext.gettext
 load_dotenv()
 
@@ -24,6 +26,7 @@ ADMIN_MAIL = os.environ.get('ADMIN_MAIL')
 st.set_page_config(page_title=_('Gesprek met Erik'), page_icon='💬', layout="centered", initial_sidebar_state="auto",
                    menu_items=None)
 
+db = firestore.Client.from_service_account_json("../firestore_key.json")
 
 if 'show_conversation_starters' not in st.session_state:
     st.session_state['show_conversation_starters'] = True
@@ -52,7 +55,6 @@ with st.sidebar:
     if debug:
         with st.expander('Session State'):
             st.json(st.session_state)
-
 
 if APP_ENV == 'dev':
     st.warning('Running in dev-mode', icon="⚠️")
@@ -93,7 +95,8 @@ def main_page():
             new_conversation()
             st.rerun()
     else:
-        st.write("Deze site is alleen te gebruiken na toestemming.\n\n Geef toestemming via het menu aan de linker kant.")
+        st.write(
+            "Deze site is alleen te gebruiken na toestemming.\n\n Geef toestemming via het menu aan de linker kant.")
 
 
 page_list = [st.Page(main_page, title='Chat', default=True, icon=":material/chat_bubble:"),

@@ -5,3 +5,4 @@ openai==1.40.8
 plotly==5.24.0
 pydantic==2.8.2
 stqdm==0.0.5
+google-cloud-firestore==2.18.0

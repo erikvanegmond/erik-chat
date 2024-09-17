@@ -1,10 +1,18 @@
+import os
 import streamlit as st
+from stqdm import stqdm
 from utils import vacature_check, extra_informatie, werkgever_uit_prompt
 import weaviate
 from weaviate.classes.query import MetadataQuery
+import json
 
-tab_vacature, tab_weaviate, tab_extra_info, tab_werkgevers = st.tabs(
-    ["Vacatures", "Weaviate", "Extra informatie", 'Werkgevers']
+from google.cloud import firestore
+
+# Authenticate to Firestore with the JSON account key.
+db = firestore.Client.from_service_account_json("../firestore_key.json")
+
+tab_vacature, tab_weaviate, tab_extra_info, tab_werkgevers, tab_firestore = st.tabs(
+    ["Vacatures", "Weaviate", "Extra informatie", 'Werkgevers', 'Firestore']
 )
 with tab_vacature:
     st.header("Vacature check")
@@ -52,3 +60,20 @@ with tab_werkgevers:
     prompt = st.text_input("Prompt", key='PromptWerkgevers')
     if prompt.strip():
         st.write(werkgever_uit_prompt(prompt))
+
+with tab_firestore:
+    if st.button("Load Conversations to Firestore"):
+        for root, _, files in os.walk('conversations'):
+            for filename in stqdm(files):
+                with open(os.path.join(root, filename), 'r', encoding='utf-8') as f:
+                    chat_data = json.load(f)
+                    doc_ref = db.collection("chats").document(chat_data['chat_id'])
+                    doc_ref.set(chat_data)
+
+    if st.button("Load Feedback to Firestore"):
+        for root, _, files in os.walk('feedback'):
+            for filename in stqdm(files):
+                with open(os.path.join(root, filename), 'r', encoding='utf-8') as f:
+                    chat_data = json.load(f)
+                    doc_ref = db.collection("feedback").document(filename.rpartition('.')[0])
+                    doc_ref.set(chat_data)

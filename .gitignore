@@ -164,3 +164,4 @@ cython_debug/
 /chatbot/conversations/
 /chatbot/assets/cv_summary.txt
 /chatbot/assets/cv.txt
+/firestore_key.json

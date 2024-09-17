@@ -7,7 +7,10 @@ import streamlit as st
 from openai import OpenAI
 
 from utils import Prompts, read_cv, vacature_check, AVATAR_IMAGE, extra_informatie, save_conversation
+from google.cloud import firestore
 
+
+firestore_db = firestore.Client.from_service_account_json("../firestore_key.json")
 
 @st.dialog("Toestemming en introductie")
 def toestemming():
@@ -51,12 +54,13 @@ def feedback():
         )
         text = st.text_area(label='Feedback', height=50)
         if st.form_submit_button(label='Submit'):
-            with open(os.path.join('feedback', f'{uuid.uuid4()}.json'), 'w', encoding='utf-8') as f:
-                json.dump({
+            feedback_data = {
                     "category": category,
                     "text": text,
                     "context": str(st.session_state.chat_id)
-                }, f, indent=4)
+                }
+            doc_ref = firestore_db.collection("feedback").document(str(uuid.uuid4()))
+            doc_ref.set(feedback_data)
             st.rerun()
 
 
@@ -158,7 +162,7 @@ def conversation_starters():
                 index=None
             )
             if ikben == "een niet-technisch":
-                new_conversation(start_prompt=Prompts.system_prompt_start_manager)
+                new_conversation(start_prompt=Prompts.system_prompt_start_niet_technisch)
             elif ikben == "je oma":
                 new_conversation(start_prompt=Prompts.system_prompt_start_oma)
             elif ikben == 'een kind van 5':

@@ -12,7 +12,9 @@ from weaviate.collections.classes.filters import Filter
 from weaviate.collections.classes.grpc import MetadataQuery, GroupBy
 from weaviate.classes.aggregate import GroupByAggregate
 from openai import OpenAI
+from google.cloud import firestore
 
+firestore_db = firestore.Client.from_service_account_json("../firestore_key.json")
 AVATAR_IMAGE = './assets/erik_bot.jpg'
 
 
@@ -244,8 +246,10 @@ def extra_informatie(prompt):
 
 
 def save_conversation():
-    with open(f'conversations/{st.session_state.chat_id}.json', 'w', encoding='utf-8') as f:
-        json.dump({'chat_id': str(st.session_state.chat_id),
-                   'user_info': st.session_state.userinfo,
-                   'conversation': st.session_state.messages},
-                  f, indent=4)
+    chat_data = {'chat_id': str(st.session_state.chat_id),
+     'user_info': st.session_state.userinfo,
+     'conversation': st.session_state.messages}
+
+    doc_ref = firestore_db.collection("chats").document(chat_data['chat_id'])
+    doc_ref.set(chat_data)
+
